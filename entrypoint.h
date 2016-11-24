@@ -23,9 +23,13 @@
 
 #ifdef _WIN64
 #include <windows.h>
+#define LIBRARY_API __stdcall __declspec(dllexport)
+#else
+ #define LIBRARY_API
 #endif
 
-#define LIBRARY_API __stdcall __declspec(dllexport)
+
+
 #define RC_OK (1)
 #define RC_NOK (0)
 
@@ -42,38 +46,43 @@ typedef int   (__stdcall _tlogFun)(char *, int, char *);
 // call is pushSamples( UUID, ptr to float array of samples, sample count, channel count )
 typedef int   (_stdcall  _pushSamplesFun)( char *, float *, int, int);
 
+// driver instance specific functions
+// will be called with device index in the range [0..getBoardCount()[
+
 extern "C" {
 
     #ifdef _WIN64
     BOOL WINAPI DllMain( HINSTANCE hInstance, DWORD dwReason, LPVOID *lpvReserved );
     #endif
 
+
     LIBRARY_API int initLibrary(char *json_init_params, _tlogFun* ptr, _pushSamplesFun *acqCb );
     LIBRARY_API int getBoardCount();
 
+
     LIBRARY_API int setBoardUUID( int device_id, char *uuid );
 
-    LIBRARY_API char *getHardwareName();
+    LIBRARY_API char *getHardwareName(int device_id);
 
 
     // manage sample rates
-    LIBRARY_API int getPossibleSampleRateCount() ;
-    LIBRARY_API unsigned int getPossibleSampleRateValue(int index);
-    LIBRARY_API unsigned int getPrefferedSampleRateValue();
+    LIBRARY_API int getPossibleSampleRateCount(int device_id) ;
+    LIBRARY_API unsigned int getPossibleSampleRateValue(int device_id, int index);
+    LIBRARY_API unsigned int getPrefferedSampleRateValue(int device_id);
 
     //manage min/max freqs
-    LIBRARY_API int64_t getMin_HWRx_CenterFreq();
-    LIBRARY_API int64_t getMax_HWRx_CenterFreq();
+    LIBRARY_API int64_t getMin_HWRx_CenterFreq(int device_id);
+    LIBRARY_API int64_t getMax_HWRx_CenterFreq(int device_id);
 
     // discover gain stages and settings
-    LIBRARY_API int getRxGainStageCount() ;
-    LIBRARY_API char* getRxGainStageName( int stage);
-    LIBRARY_API char* getRxGainStageUnitName( int stage);
-    LIBRARY_API int getRxGainStageType( int stage);
-    LIBRARY_API float getMinGainValue(int stage);
-    LIBRARY_API float getMaxGainValue(int stage);
-    LIBRARY_API int getGainDiscreteValuesCount( int stage );
-    LIBRARY_API float getGainDiscreteValue( int stage, int index ) ;
+    LIBRARY_API int getRxGainStageCount(int device_id) ;
+    LIBRARY_API char* getRxGainStageName( int device_id, int stage);
+    LIBRARY_API char* getRxGainStageUnitName( int device_id,int stage);
+    LIBRARY_API int getRxGainStageType( int device_id,int stage);
+    LIBRARY_API float getMinGainValue(int device_id,int stage);
+    LIBRARY_API float getMaxGainValue(int device_id,int stage);
+    LIBRARY_API int getGainDiscreteValuesCount( int device_id,int stage );
+    LIBRARY_API float getGainDiscreteValue( int device_id,int stage, int index ) ;
 
     // driver instance specific functions
     // will be called with device index in the range [0..getBoardCount()[

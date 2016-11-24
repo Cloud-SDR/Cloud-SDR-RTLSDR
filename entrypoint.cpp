@@ -109,6 +109,14 @@ void log( int device_id, int level, char *msg ) {
 /*
  * First function called by SDRNode - must return 0 if hardware is not present or problem
  */
+/**
+ * @brief initLibrary is called when the DLL is loaded, only for the first instance of the devices (when the getBoardCount() function returns
+ *        more than 1)
+ * @param json_init_params a JSOn structure to pass parameters from scripting to drivers
+ * @param ptr pointer to function for logging
+ * @param acqCb pointer to RF IQ processing function
+ * @return
+ */
 LIBRARY_API int initLibrary(char *json_init_params,
                             _tlogFun* ptr,
                             _pushSamplesFun *acqCb ) {
@@ -256,7 +264,13 @@ LIBRARY_API int initLibrary(char *json_init_params,
     return(RC_OK);
 }
 
-// Assigns unique ID (UUID) to each device
+
+/**
+ * @brief setBoardUUID this function is called by SDRNode to assign a unique ID to each device managed by the driver
+ * @param device_id [0..getBoardCount()[
+ * @param uuid the unique ID
+ * @return
+ */
 LIBRARY_API int setBoardUUID( int device_id, char *uuid ) {
     int len = 0 ;
 
@@ -277,97 +291,147 @@ LIBRARY_API int setBoardUUID( int device_id, char *uuid ) {
     return(RC_OK);
 }
 
-// Retrieve hardware name
-LIBRARY_API char *getHardwareName() {
+/**
+ * @brief getHardwareName called by SDRNode to retrieve the name for the nth device
+ * @param device_id [0..getBoardCount()[
+ * @return a string with the hardware name, this name is listed in the 'devices' admin page and appears 'as is' in the scripts
+ */
+LIBRARY_API char *getHardwareName(int device_id) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s\n", __func__);
-    return( driver_name );
+    if( device_id >= device_count )
+        return(NULL);
+    struct t_rx_device *dev = &rx[device_id] ;
+    return( dev->device_name );
 }
 
-
+/**
+ * @brief getBoardCount called by SDRNode to retrieve the number of different boards managed by the driver
+ * @return the number of devices managed by the driver
+ */
 LIBRARY_API int getBoardCount() {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s\n", __func__);
     return(device_count);
 }
 
-LIBRARY_API int getPossibleSampleRateCount() {
+/**
+ * @brief getPossibleSampleRateCount called to know how many sample rates are available. Used to fill the select zone in admin
+ * @param device_id
+ * @return sample rate in Hz
+ */
+LIBRARY_API int getPossibleSampleRateCount(int device_id) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s\n", __func__);
-    struct t_sample_rates* rates = rx[0].rates ;
-    return(rates->enum_length);
+    if( device_id >= device_count )
+        return(0);
+    struct t_rx_device *dev = &rx[device_id] ;
+    return( dev->rates->enum_length );
 }
 
-LIBRARY_API unsigned int getPossibleSampleRateValue(int index) {
+/**
+ * @brief getPossibleSampleRateValue
+ * @param device_id
+ * @param index
+ * @return
+ */
+LIBRARY_API unsigned int getPossibleSampleRateValue(int device_id, int index) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, index );
-    // we return values for device[0]
-    struct t_sample_rates* rates = rx[0].rates ;
+    if( device_id >= device_count )
+        return(0);
+    struct t_rx_device *dev = &rx[device_id] ;
+
+    struct t_sample_rates* rates = dev->rates ;
     if( index > rates->enum_length )
         return(0);
 
     return( rates->sample_rates[index] );
 }
 
-LIBRARY_API unsigned int getPrefferedSampleRateValue() {
+LIBRARY_API unsigned int getPrefferedSampleRateValue(int device_id) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s\n", __func__);
-    // we return values for device[0]
-    struct t_sample_rates* rates = rx[0].rates ;
+    if( device_id >= device_count )
+        return(0);
+    struct t_rx_device *dev = &rx[device_id] ;
+    struct t_sample_rates* rates = dev->rates ;
     int index = rates->preffered_sr_index ;
     return( rates->sample_rates[index] );
 }
 //-------------------------------------------------------------------
-LIBRARY_API int64_t getMin_HWRx_CenterFreq() {
+LIBRARY_API int64_t getMin_HWRx_CenterFreq(int device_id) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s\n", __func__);
-    return(rx[0].min_frq_hz);
+    if( device_id >= device_count )
+        return(0);
+    struct t_rx_device *dev = &rx[device_id] ;
+    return( dev->min_frq_hz ) ;
 }
 
-LIBRARY_API int64_t getMax_HWRx_CenterFreq() {
+LIBRARY_API int64_t getMax_HWRx_CenterFreq(int device_id) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s\n", __func__);
-    return(rx[0].max_frq_hz);
+    if( device_id >= device_count )
+        return(0);
+    struct t_rx_device *dev = &rx[device_id] ;
+    return( dev->max_frq_hz ) ;
 }
 
 //-------------------------------------------------------------------
 // Gain management
-LIBRARY_API int getRxGainStageCount() {
-    if( DEBUG_DRIVER ) fprintf(stderr,"%s\n", __func__);
-    // STAGES_COUNT stages
+// devices have stages (LNA, VGA, IF...) . Each stage has its own gain
+// range, its own name and its own unit.
+// each stage can be 'continuous gain' or 'discrete' (on/off for example)
+//-------------------------------------------------------------------
+LIBRARY_API int getRxGainStageCount(int device_id) {
+    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, device_id);
+    // RTLSDR have only one stage
     return(1);
 }
 
-LIBRARY_API char* getRxGainStageName( int stage) {
-    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, stage);
+LIBRARY_API char* getRxGainStageName( int device_id, int stage) {
+    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, device_id, stage );
+    // RTLSDR have only one stage so the name is same for all
     return( stage_name );
 }
 
-LIBRARY_API char* getRxGainStageUnitName( int stage) {
-    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, stage);
+LIBRARY_API char* getRxGainStageUnitName( int device_id, int stage) {
+    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, device_id, stage );
+    // RTLSDR have only one stage so the unit is same for all
     return( stage_unit );
 }
 
-LIBRARY_API int getRxGainStageType( int stage) {
-    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, stage);
+LIBRARY_API int getRxGainStageType( int device_id, int stage) {
+    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, device_id, stage );
+    // continuous value
     return(0);
 }
 
-LIBRARY_API float getMinGainValue(int stage) {
-    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, stage);
+LIBRARY_API float getMinGainValue(int device_id,int stage) {
+    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, device_id, stage );
+    if( device_id >= device_count )
+        return(0);
+    struct t_rx_device *dev = &rx[device_id] ;
+    return( dev->gain_min ) ;
+}
+
+LIBRARY_API float getMaxGainValue(int device_id,int stage) {
+    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, device_id, stage );
+    if( device_id >= device_count )
+        return(0);
+    struct t_rx_device *dev = &rx[device_id] ;
+    return( dev->gain_max ) ;
+}
+
+LIBRARY_API int getGainDiscreteValuesCount( int device_id, int stage ) {
+    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, device_id, stage);
     return(0);
 }
 
-LIBRARY_API float getMaxGainValue(int stage) {
-    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, stage);
-    return(40);
-}
-
-LIBRARY_API int getGainDiscreteValuesCount( int stage ) {
-    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, stage);
+LIBRARY_API float getGainDiscreteValue( int device_id, int stage, int index ) {
+    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d, %d,%d)\n", __func__, device_id, stage, index);
     return(0);
 }
 
-LIBRARY_API float getGainDiscreteValue( int stage, int index ) {
-    if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, stage, index);
-    return(0);
-}
-
-// driver instance specific functions
-// will be called with device index in the range [0..getBoardCount()[
+/**
+ * @brief getSerialNumber returns the (unique for this hardware name) serial number. Serial numbers are useful to manage more than one unit
+ * @param device_id
+ * @return
+ */
 LIBRARY_API char* getSerialNumber( int device_id ) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, device_id);
     if( device_id >= device_count )
@@ -376,11 +440,23 @@ LIBRARY_API char* getSerialNumber( int device_id ) {
     return( dev->device_serial_number );
 }
 
+//----------------------------------------------------------------------------------
+// Manage acquisition
+// SDRNode calls 'prepareRxEngine(device)' to ask for the start of acquisition
+// Then, the driver shall call the '_pushSamplesFun' function passed at initLibrary( ., ., _pushSamplesFun* fun , ...)
+// when the driver shall stop, SDRNode calls finalizeRXEngine()
+
+/**
+ * @brief prepareRXEngine trig on the acquisition process for the device
+ * @param device_id
+ * @return RC_OK if streaming has started, RC_NOK otherwise
+ */
 LIBRARY_API int prepareRXEngine( int device_id ) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, device_id);
     if( device_id >= device_count )
         return(RC_NOK);
 
+    // here we keep it simple, just fire the relevant mutex
     struct t_rx_device *dev = &rx[device_id] ;
     dev->acq_stop = false ;
     rtlsdr_reset_buffer( dev->rtlsdr_device);
@@ -389,6 +465,11 @@ LIBRARY_API int prepareRXEngine( int device_id ) {
     return(RC_OK);
 }
 
+/**
+ * @brief finalizeRXEngine stops the acquisition process
+ * @param device_id
+ * @return
+ */
 LIBRARY_API int finalizeRXEngine( int device_id ) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, device_id);
     if( device_id >= device_count )
@@ -401,6 +482,12 @@ LIBRARY_API int finalizeRXEngine( int device_id ) {
     return(RC_OK);
 }
 
+/**
+ * @brief setRxSampleRate configures the sample rate for the device (in Hz). Can be different from the enum given by getXXXSampleRate
+ * @param device_id
+ * @param sample_rate
+ * @return
+ */
 LIBRARY_API int setRxSampleRate( int device_id , int sample_rate) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, device_id,sample_rate);
     if( device_id >= device_count )
@@ -427,6 +514,11 @@ LIBRARY_API int setRxSampleRate( int device_id , int sample_rate) {
     return(RC_OK);
 }
 
+/**
+ * @brief getActualRxSampleRate called to know what is the actual sampling rate (hz) for the given device
+ * @param device_id
+ * @return
+ */
 LIBRARY_API int getActualRxSampleRate( int device_id ) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, device_id);
     if( device_id >= device_count )
@@ -435,6 +527,12 @@ LIBRARY_API int getActualRxSampleRate( int device_id ) {
     return(dev->current_sample_rate);
 }
 
+/**
+ * @brief setRxCenterFreq tunes device to frq_hz (center frequency)
+ * @param device_id
+ * @param frq_hz
+ * @return
+ */
 LIBRARY_API int setRxCenterFreq( int device_id, int64_t frq_hz ) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%ld)\n", __func__, device_id, (long)frq_hz);
     if( DEBUG_DRIVER ) fflush(stderr);
@@ -450,7 +548,11 @@ LIBRARY_API int setRxCenterFreq( int device_id, int64_t frq_hz ) {
     return(RC_NOK);
 }
 
-
+/**
+ * @brief getRxCenterFreq retrieve the current center frequency for the device
+ * @param device_id
+ * @return
+ */
 LIBRARY_API int64_t getRxCenterFreq( int device_id ) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d)\n", __func__, device_id);
     if( device_id >= device_count )
@@ -464,6 +566,13 @@ LIBRARY_API int64_t getRxCenterFreq( int device_id ) {
     return( dev->center_frq_hz ) ;
 }
 
+/**
+ * @brief setRxGain sets the current gain
+ * @param device_id
+ * @param stage_id
+ * @param gain_value
+ * @return
+ */
 LIBRARY_API int setRxGain( int device_id, int stage_id, float gain_value ) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d,%f)\n", __func__, device_id,stage_id,gain_value);
     if( device_id >= device_count )
@@ -502,6 +611,12 @@ LIBRARY_API int setRxGain( int device_id, int stage_id, float gain_value ) {
     return(RC_NOK);
 }
 
+/**
+ * @brief getRxGainValue reads the current gain value
+ * @param device_id
+ * @param stage_id
+ * @return
+ */
 LIBRARY_API float getRxGainValue( int device_id , int stage_id ) {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s(%d,%d)\n", __func__, device_id,stage_id);
 
@@ -525,9 +640,20 @@ LIBRARY_API bool setAutoGainMode( int device_id ) {
 }
 
 //-----------------------------------------------------------------------------------------
+// functions below are RTLSDR specific
+// One thread is started by device, and each sample frame calls rtlsdr_callback() with a block
+// of IQ samples as bytes.
+// Samples are converted to float, DC is removed and finally samples are passed to SDRNode
+//
+
+
 #define ALPHA_DC (0.9996)
-
-
+/**
+ * @brief rtlsdr_callback called by rtlsdr driver. This function converts to float and removes DC offset
+ * @param buf
+ * @param len
+ * @param ctx
+ */
 void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx) {
     TYPECPX *samples ;
     TYPECPX tmp ;
@@ -570,12 +696,17 @@ void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx) {
         samples[i] = tmp ;
     }
     // push samples to SDRNode callback function
-
+    // we only manage one channel per device
     if( (*acqCbFunction)( my_device->uuid, (float *)samples, sample_count, 1 ) <= 0 ) {
         free(samples);
     }
 }
 
+/**
+ * @brief acquisition_thread This function is locked by the mutex and waits before starting the acquisition in asynch mode
+ * @param params
+ * @return
+ */
 void* acquisition_thread( void *params ) {
     struct t_rx_device* my_device = (struct t_rx_device*)params ;
     rtlsdr_dev_t *rtlsdr_device = my_device->rtlsdr_device ;
