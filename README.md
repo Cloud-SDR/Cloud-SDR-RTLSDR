@@ -5,10 +5,6 @@ SDRNode can load custom driver files from shared library.
 to implement you own driver, you have to code all the functions defined in external_hardware_def.h and then update your customhardware.js file.
 
 Example :
-/*---------------------------------------------------------*/
-/* customhardware.js : load our custom drivers to SDRNode  */
-/*---------------------------------------------------------*/
-
 // Load RTLSDR shared library
 if( SDRNode.loadDriver('CloudSDR_RTLSDR','') ) {
 	print('RTLSDR Driver loaded');
