@@ -1,3 +1,20 @@
+/*
+ * Adds RTLSDR Dongles capability to SDRNode
+ * Copyright (C) 2016 Sylvain AZARIAN <sylvain.azarian@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -14,7 +31,7 @@
 #include "jansson/jansson.h"
 
 #include "entrypoint.h"
-#define DEBUG_DRIVER (1)
+#define DEBUG_DRIVER (0)
 
 char *driver_name ;
 void* acquisition_thread( void *params ) ;
@@ -31,6 +48,7 @@ struct t_sample_rates {
     int preffered_sr_index ;
 };
 
+// this structure stores the device state
 struct t_rx_device {
 
     rtlsdr_dev_t *rtlsdr_device ;
@@ -238,6 +256,7 @@ LIBRARY_API int initLibrary(char *json_init_params,
     return(RC_OK);
 }
 
+// Assigns unique ID (UUID) to each device
 LIBRARY_API int setBoardUUID( int device_id, char *uuid ) {
     int len = 0 ;
 
@@ -258,7 +277,7 @@ LIBRARY_API int setBoardUUID( int device_id, char *uuid ) {
     return(RC_OK);
 }
 
-
+// Retrieve hardware name
 LIBRARY_API char *getHardwareName() {
     if( DEBUG_DRIVER ) fprintf(stderr,"%s\n", __func__);
     return( driver_name );
