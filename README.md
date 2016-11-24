@@ -1,5 +1,5 @@
 # Cloud-SDR-RTLSDR
-Open source driver to add RTLSDR dongles to Cloud-SDR SDRNode. 
+Open source driver to add RTLSDR dongles to [Cloud-SDR SDRNode](http://www.cloud-sdr.com/). 
 
 SDRNode can load custom driver files from shared library.
 to implement you own driver, you have to code all the functions defined in external_hardware_def.h and then update your customhardware.js file.
