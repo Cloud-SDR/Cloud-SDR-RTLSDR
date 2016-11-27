@@ -23,7 +23,14 @@ TEMPLATE = lib
 
 DEFINES += DRIVEREXAMPLE_LIBRARY
 LIBS += -lpthread  -lrtlsdr  
-DESTDIR = C:/SDRNode/addons
+win32 {
+    DESTDIR = C:/SDRNode/addons
+}
+
+unix {
+    DESTDIR = /opt/sdrnode/addons
+}
+
 SOURCES += \
     entrypoint.cpp \
     jansson/dump.c \
@@ -50,6 +57,6 @@ HEADERS +=\
     jansson/utf.h
 
 unix {
-    target.path = /usr/lib
-    INSTALLS += target
+    #target.path = /usr/lib
+    #INSTALLS += target
 }

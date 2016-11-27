@@ -40,11 +40,11 @@
 
 // call this function to log something into the SDRNode central log file
 // call is log( UUID, severity, msg)
-typedef int   (__stdcall _tlogFun)(char *, int, char *);
+typedef int   (LIBRARY_API _tlogFun)(char *, int, char *);
 
 // call this function to push samples to the SDRNode
 // call is pushSamples( UUID, ptr to float array of samples, sample count, channel count )
-typedef int   (_stdcall  _pushSamplesFun)( char *, float *, int, int);
+typedef int   (LIBRARY_API  _pushSamplesFun)( char *, float *, int, int);
 
 // driver instance specific functions
 // will be called with device index in the range [0..getBoardCount()[

@@ -106,6 +106,7 @@ void log( int device_id, int level, char *msg ) {
 }
 
 
+
 /*
  * First function called by SDRNode - must return 0 if hardware is not present or problem
  */
