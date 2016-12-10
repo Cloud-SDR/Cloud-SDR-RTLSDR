@@ -78,6 +78,8 @@ struct t_rx_device {
     // for DC removal
     TYPECPX xn_1 ;
     TYPECPX yn_1 ;
+
+    struct ext_Context context ;
 };
 
 int device_count ;
@@ -250,6 +252,8 @@ LIBRARY_API int initLibrary(char *json_init_params,
             }
         }
         tmp->gain = tmp->gain_min + (tmp->gain_max - tmp->gain_min)/2 ;
+
+        tmp->context.ctx_version = 0 ;
 
         // create acquisition threads
         pthread_create(&tmp->receive_thread, NULL, acquisition_thread, tmp );
@@ -509,6 +513,8 @@ LIBRARY_API int setRxSampleRate( int device_id , int sample_rate) {
     int rc = rtlsdr_set_sample_rate( dev->rtlsdr_device, sample_rate );
     if( rc == 0 ) {
         dev->current_sample_rate = sample_rate ;
+        dev->context.ctx_version++ ;
+        dev->context.sample_rate = sample_rate ;
     } else {
         dev->current_sample_rate = rtlsdr_get_sample_rate( dev->rtlsdr_device );
     }
@@ -544,6 +550,8 @@ LIBRARY_API int setRxCenterFreq( int device_id, int64_t frq_hz ) {
     int rc = rtlsdr_set_center_freq( dev->rtlsdr_device, (uint32_t)frq_hz  );
     if( rc == 0 ) {
         dev->center_frq_hz = frq_hz ;
+        dev->context.ctx_version++ ;
+        dev->context.center_freq = frq_hz ;
         return(RC_OK);
     }
     return(RC_NOK);
@@ -698,7 +706,9 @@ void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx) {
     }
     // push samples to SDRNode callback function
     // we only manage one channel per device
-    if( (*acqCbFunction)( my_device->uuid, (float *)samples, sample_count, 1 ) <= 0 ) {
+    if( (*acqCbFunction)( my_device->uuid,
+                          (float *)samples, sample_count, 1,
+                          &my_device->context) <= 0 ) {
         free(samples);
     }
 }

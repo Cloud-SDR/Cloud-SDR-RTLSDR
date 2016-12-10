@@ -37,6 +37,11 @@
  *  For more details on the following functions, please look at http://wiki.cloud-sdr.com/doku.php?id=documentation
  */
 
+struct ext_Context {
+    long ctx_version ;
+    int64_t center_freq;
+    unsigned int sample_rate;
+};
 
 // call this function to log something into the SDRNode central log file
 // call is log( UUID, severity, msg)
@@ -44,7 +49,7 @@ typedef int   (LIBRARY_API _tlogFun)(char *, int, char *);
 
 // call this function to push samples to the SDRNode
 // call is pushSamples( UUID, ptr to float array of samples, sample count, channel count )
-typedef int   (LIBRARY_API  _pushSamplesFun)( char *, float *, int, int);
+typedef int   (LIBRARY_API  _pushSamplesFun)( char *, float *, int, int, struct ext_Context*);
 
 // driver instance specific functions
 // will be called with device index in the range [0..getBoardCount()[
